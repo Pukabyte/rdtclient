@@ -10,13 +10,7 @@ This is a web interface to manage your torrents on Real-Debrid, AllDebrid or Pre
 
 **You will need a Premium service at Real-Debrid, AllDebrid or Premiumize!**
 
-[Click here to sign up for Real-Debrid.](https://real-debrid.com/?id=1348683)
-
-[Click here to sign up for AllDebrid.](https://alldebrid.com/?uid=2v91l)
-
-[Click here to sign up for Premiumize.](https://www.premiumize.me/)
-
-<sub>(referal links so I can get a few free premium days)</sub>
+[Click here to sign up for Real-Debrid.](http://real-debrid.com/?id=8999543)
 
 ## Docker Setup
 
