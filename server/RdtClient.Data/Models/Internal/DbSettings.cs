@@ -85,11 +85,11 @@ public class DbSettingsDownloadClient
 
     [DisplayName("Download path")]
     [Description("Path in the docker container to download files to (i.e. /data/downloads), or a local path when using as a service.")]
-    public String DownloadPath { get; set; } = "/data/downloads";
+    public String DownloadPath { get; set; } = "/mnt/symlinks";
 
     [DisplayName("Mapped path")]
     [Description("Path where files are downloaded to on your host (i.e. D:\\Downloads). This path is used for *arr to find your downloads.")]
-    public String MappedPath { get; set; } = @"C:\Downloads";
+    public String MappedPath { get; set; } = @"/mnt/symlinks";
 
     [DisplayName("Download speed (in MB/s) (only used for the Internal Downloader)")]
     [Description("Maximum download speed in Megabytes per second. When set to 0 unlimited speed is used.")]
@@ -126,7 +126,7 @@ http://127.0.0.1:6800/jsonrpc.")]
 
     [DisplayName("Rclone mount path (only used for the Symlink Downloader)")]
     [Description("Path where Rclone is mounted. Required for Symlink Downloader.")]
-    public String RcloneMountPath { get; set; } = "/mnt/rd/";
+    public String RcloneMountPath { get; set; } = "/mnt/remote/realdebrid/torrents";
 }
 
 public class DbSettingsProvider
@@ -154,7 +154,7 @@ or
 
     [DisplayName("Automatically delete downloads removed from provider")]
     [Description("When selected, cancel and delete downloads that have been removed from your debrid provider.")]
-    public Boolean AutoDelete { get; set; } = false;
+    public Boolean AutoDelete { get; set; } = true;
 
     [DisplayName("Connection Timeout")]
     [Description("Timeout in seconds to make a connection to the provider. Increase if you experience timeouts in the logs.")]
@@ -208,7 +208,7 @@ public class DbSettingsDefaultsWithCategory : DbSettingsDefaults
 
     [DisplayName("Category")]
     [Description("When a torrent is imported assign it this category.")]
-    public String? Category { get; set; } = null;
+    public String? Category { get; set; } = sonarr,sonarr4k,sonarr4kdv,radarr,radarr4k,radarr4kdv,radarranime;
 
     [DisplayName("Post Download Action")]
     [Description("When all files are downloaded from the provider to the host, perform this action. Does not apply when using the symlink downloader.")]
