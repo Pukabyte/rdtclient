@@ -4,6 +4,9 @@ namespace RdtClient.Data.Enums;
 
 public enum Provider
 {
+    [Description("Torbox")]
+    Torbox,
+    
     [Description("RealDebrid")]
     RealDebrid,
 
