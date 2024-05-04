@@ -6,11 +6,17 @@ This is a web interface to manage your torrents on Real-Debrid, AllDebrid or Pre
 - Download all files from Real-Debrid, AllDebrid or Premiumize to your local machine automatically
 - Unpack all files when finished downloading
 - Implements a fake qBittorrent API so you can hook up other applications like Sonarr, Radarr or Couchpotato.
-- Built with Angular 15 and .NET 8
+- Built with Angular 15 and .NET 6
 
 **You will need a Premium service at Real-Debrid, AllDebrid or Premiumize!**
 
-[Click here to sign up for Real-Debrid.](http://real-debrid.com/?id=8999543)
+[Click here to sign up for Real-Debrid.](https://real-debrid.com/?id=1348683)
+
+[Click here to sign up for AllDebrid.](https://alldebrid.com/?uid=2v91l)
+
+[Click here to sign up for Premiumize.](https://www.premiumize.me/)
+
+<sub>(referal links so I can get a few free premium days)</sub>
 
 ## Docker Setup
 
@@ -67,7 +73,7 @@ Replace the paths in `volumes` as in the above step.
 Instead of running in Docker you can install it as a service in Windows or Linux.
 ## Windows Service
 
-1. Make sure you have the ASP.NET Core Runtime 8 installed: [https://dotnet.microsoft.com/download/dotnet/8.0](https://dotnet.microsoft.com/download/dotnet/8.0)
+1. Make sure you have the ASP.NET Core Runtime 6 installed: [https://dotnet.microsoft.com/download/dotnet/6.0](https://dotnet.microsoft.com/download/dotnet/6.0)
 1. Get the latest zip file from the Releases page and extract it to your host.
 1. Open the `appsettings.json` file and replace the `LogLevel` `Path` to a path on your host.
 1. In `appsettings.json` replace the `Database` `Path` to a path on your host.
@@ -86,7 +92,7 @@ Instead of running in Docker you can install it as a service in Linux.
 
     ```rm packages-microsoft-prod.deb```  
 
-    ```sudo apt-get update && sudo apt-get install -y dotnet-sdk-8.0```  
+    ```sudo apt-get update && sudo apt-get install -y dotnet-sdk-6.0```  
 
 2. Get latest archive from [releases](https://github.com/rogerfar/rdt-client/releases):  
 ```wget <zip_url>```
@@ -139,19 +145,9 @@ If you use Proxmox for your homelab, you can run rdt-client in a linux container
 
 ### Download Clients
 
-Currently there 4 available download clients:
+Currently there 2 available download clients:
 
 #### Internal Downloader
-
-This experimental [downloader](https://github.com/rogerfar/Downloader.NET) can be used to download files with multiple sections in parallel.
-
-It has the following options:
-
-- Download speed (in MB/s): This number indicates the speed in MB/s per download over all parallel downloads and chunks.
-- Parallel connections per download: When a file is downloaded it is split in sections, this setting indicates how many sections you will download in parallel.
-- Connection Timeout: This number indicates the timeout in milliseconds before a download chunk times out. It will retry each chunk 5 times before completely failing.
-
-#### Bezzad Downloader
 
 This [downloader](https://github.com/bezzad/Downloader) can be used to download files in parallel and with multiple chunks.
 
@@ -213,7 +209,7 @@ Notice: the progress and ETA reported in Sonarr's Activity tab will not be accur
 
 ### Running within a folder
 
-By default the application runs in the root of your hosted address (i.e. https://rdt.myserver.com/), but if you want to run it as a relative folder (i.e. https://myserver.com/rdt) you will have to change the `BasePath` setting in the `appsettings.json` file. You can set the `BASE_PATH` environment variable for docker enviroments.
+By default the application runs in the root of your hosted address (i.e. https://rdt.myserver.com/), but if you want to run it as a relative folder (i.e. https://myserver.com/rdt) you will have to change the `BasePath` setting in the `appsettings.json` file.
 
 ## Build instructions
 
@@ -222,7 +218,7 @@ By default the application runs in the root of your hosted address (i.e. https:/
 - NodeJS
 - NPM
 - Angular CLI
-- .NET 8
+- .NET 6
 - Visual Studio 2022
 - (optional) Resharper
 

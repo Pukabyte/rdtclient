@@ -33,7 +33,7 @@
     #>
 param(
     [string]$Version = "",
-    [string]$DockerAccount = "rogerfar",
+    [string]$DockerAccount = "systr0",
     [string]$Platforms = "linux/arm64/v8,linux/amd64",
     [string]$Dockerfile = "Dockerfile",
     [switch]$SkipPush,
@@ -42,7 +42,7 @@ param(
     [string]$BuildProgress="auto"
 )
 
-$imageName = "$($DockerAccount)/rdtclient"
+$imageName = "$($DockerAccount)/rdtclient-v39-dev"
 
 $dockerArgs = @( "buildx", "build", "--network=default", "--platform", $Platforms, "--progress=$BuildProgress", "--tag", "$($imageName):latest", "--file", $Dockerfile, "." )
 
