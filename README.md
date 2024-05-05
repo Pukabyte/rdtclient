@@ -10,11 +10,7 @@ This is a web interface to manage your torrents on Real-Debrid, AllDebrid or Pre
 
 **You will need a Premium service at Real-Debrid, AllDebrid or Premiumize!**
 
-[Click here to sign up for Real-Debrid.](https://real-debrid.com/?id=1348683)
-
-[Click here to sign up for AllDebrid.](https://alldebrid.com/?uid=2v91l)
-
-[Click here to sign up for Premiumize.](https://www.premiumize.me/)
+[Click here to sign up for Real-Debrid.](http://real-debrid.com/?id=8999543)
 
 <sub>(referal links so I can get a few free premium days)</sub>
 
@@ -32,7 +28,7 @@ docker run --pull=always
 		   --log-opt max-size=10m \
 		   -p 6500:6500 \
 		   --name rdtclient \
-		   rogerfar/rdtclient:latest
+		   pukabyte/rdtclient:seed
 ```
 
 Replace `/your/download/path/` with your local path to download files to. For Windows i.e. `C:/Downloads`.
@@ -48,9 +44,9 @@ services:
     rdtclient:
         container_name: rdtclient
         volumes:
-            - 'D:/Downloads/:/data/downloads'
-            - 'D:/Docker/rdt-client/:/data/db'
-        image: rogerfar/rdtclient
+            - /mnt:/mnt
+            - /opt/rdtclient/data/db:/data/db'
+        image: pukabyte/rdtclient:seed
         restart: always
         logging:
             driver: json-file
