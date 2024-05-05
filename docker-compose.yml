@@ -2,17 +2,18 @@ version: '3.3'
 
 services:
     rdtclient:
-        image: rogerfar/rdtclient
+        image: pukabyte/rdtclient:seed
         container_name: rdtclient
         # build:
         #     context: .
         #     dockerfile: Dockerfile
         environment:
-            - PUID=1001
-            - PGID=1001
+            - PUID=1000
+            - PGID=1000
         volumes:
-            - ${PWD}/data/downloads:/data/downloads
-            - ${PWD}/data/db:/data/db
+            - /opt/rdtclient/data/downloads:/data/downloads
+            - /opt/rdtclient/data/db:/data/db
+	    - /mnt:/mnt
         restart: always
         logging:
             driver: json-file
