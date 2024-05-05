@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using DownloaderNET;
+using Serilog;
 
 namespace RdtClient.Service.Services.Downloaders;
 
@@ -7,7 +8,7 @@ public class InternalDownloader : IDownloader
     public event EventHandler<DownloadCompleteEventArgs>? DownloadComplete;
     public event EventHandler<DownloadProgressEventArgs>? DownloadProgress;
 
-    private readonly DownloaderNET.Downloader _downloadService;
+    private readonly Downloader _downloadService;
     private readonly DownloaderNET.Settings _downloadConfiguration;
 
     private readonly String _filePath;
@@ -30,11 +31,9 @@ public class InternalDownloader : IDownloader
 
         SetSettings();
 
-        _downloadService = new DownloaderNET.Downloader(_uri, _filePath, _downloadConfiguration);
+        _downloadService = new Downloader(_uri, _filePath, _downloadConfiguration, _cancellationToken.Token);
 
-        //_downloadService.OnLog += message => Debug.WriteLine(message.Message);
-
-        _downloadService.OnProgress += (chunks, _) =>
+        _downloadService.OnProgress += args =>
         {
             if (DownloadProgress == null)
             {
@@ -44,13 +43,13 @@ public class InternalDownloader : IDownloader
             DownloadProgress.Invoke(this,
                                      new DownloadProgressEventArgs
                                      {
-                                         Speed = (Int64)chunks.Where(m => m.IsActive).Sum(m => m.Speed),
-                                         BytesDone = chunks.Sum(m => m.DownloadBytes),
-                                         BytesTotal = chunks.Sum(m => m.LengthBytes)
+                                         Speed = (Int64) args.Sum(m => m.Speed),
+                                         BytesDone = args.Sum(m => m.DownloadBytes),
+                                         BytesTotal = args.Sum(m => m.LengthBytes)
                                      });
         };
 
-        _downloadService.OnComplete += (_, error) =>
+        _downloadService.OnComplete += error =>
         {
             DownloadComplete?.Invoke(this,
                                      new DownloadCompleteEventArgs
@@ -64,14 +63,14 @@ public class InternalDownloader : IDownloader
         };
     }
 
-    public async Task<String?> Download()
+    public Task<String?> Download()
     {
         _logger.Debug($"Starting download of {_uri}, writing to path: {_filePath}");
 
-        await _downloadService.Download(_cancellationToken.Token);
-        _ = Task.Run(StartTimer);
+        Task.Run(_downloadService.Download);
+        Task.Run(StartTimer);
 
-        return Guid.NewGuid().ToString();
+        return Task.FromResult<String?>(null);
     }
 
     public Task Cancel()
@@ -118,10 +117,9 @@ public class InternalDownloader : IDownloader
             settingDownloadTimeout = 1000;
         }
         
-        _downloadConfiguration.Parallel = settingDownloadParallelCount;
+        _downloadConfiguration.ChunkCount = settingDownloadParallelCount;
         _downloadConfiguration.MaximumBytesPerSecond = settingDownloadMaxSpeed;
         _downloadConfiguration.Timeout = settingDownloadTimeout;
-        _downloadConfiguration.RetryCount = 5;
     }
 
     private async Task StartTimer()

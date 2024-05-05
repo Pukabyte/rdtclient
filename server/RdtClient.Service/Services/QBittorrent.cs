@@ -303,7 +303,7 @@ public class QBittorrent
                 var allDownloadsComplete = torrent.Downloads.All(m => m.Completed.HasValue);
                 var hasDownloadsWithErrors = torrent.Downloads.Any(m => m.Error != null);
 
-                if (torrent.Downloads.Count == 0 || hasDownloadsWithErrors || torrent.RdStatus == TorrentStatus.Error)
+                if (hasDownloadsWithErrors || torrent.RdStatus == TorrentStatus.Error)
                 {
                     result.State = "error";
                 }
@@ -424,22 +424,22 @@ public class QBittorrent
         switch (Settings.Get.Integrations.Default.FinishedAction)
         {
             case TorrentFinishedAction.RemoveAllTorrents:
-                _logger.LogDebug("Removing torrents from debrid provider and RDT-Client, no files");
+                _logger.LogDebug($"Removing torrents from Real-Debrid and Real-Debrid Client, no files", torrent);
                 await _torrents.Delete(torrent.TorrentId, true, true, false);
 
                 break;
             case TorrentFinishedAction.RemoveRealDebrid:
-                _logger.LogDebug("Removing torrents from debrid provider, no files");
+                _logger.LogDebug($"Removing torrents from Real-Debrid, no files", torrent);
                 await _torrents.Delete(torrent.TorrentId, false, true, false);
 
                 break;
             case TorrentFinishedAction.RemoveClient:
-                _logger.LogDebug("Removing torrents from client, no files");
+                _logger.LogDebug($"Removing torrents from client, no files", torrent);
                 await _torrents.Delete(torrent.TorrentId, true, false, false);
 
                 break;
             case TorrentFinishedAction.None:
-                _logger.LogDebug("Not removing torrents or files");
+                _logger.LogDebug($"Not removing torrents or files", torrent);
 
                 break;
             default:
@@ -456,7 +456,6 @@ public class QBittorrent
         var torrent = new Torrent
         {
             Category = category,
-            DownloadClient = Settings.Get.DownloadClient.Client,
             HostDownloadAction = Settings.Get.Integrations.Default.HostDownloadAction,
             DownloadAction = Settings.Get.Integrations.Default.OnlyDownloadAvailableFiles ? TorrentDownloadAction.DownloadAvailableFiles : TorrentDownloadAction.DownloadAll,
             FinishedAction = TorrentFinishedAction.None,
@@ -478,7 +477,6 @@ public class QBittorrent
         var torrent = new Torrent
         {
             Category = category,
-            DownloadClient = Settings.Get.DownloadClient.Client,
             HostDownloadAction = Settings.Get.Integrations.Default.HostDownloadAction,
             DownloadAction = Settings.Get.Integrations.Default.OnlyDownloadAvailableFiles ? TorrentDownloadAction.DownloadAvailableFiles : TorrentDownloadAction.DownloadAll,
             FinishedAction = TorrentFinishedAction.None,

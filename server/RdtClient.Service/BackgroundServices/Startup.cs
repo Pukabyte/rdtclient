@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -32,6 +33,24 @@ public class Startup : IHostedService
         var settings = scope.ServiceProvider.GetRequiredService<Settings>();
         await settings.Seed();
         await settings.ResetCache();
+
+        var exampleConfigPath = "/data/db/instances.json.example";
+        if (!File.Exists(exampleConfigPath))
+        {
+            var directoryPath = Path.GetDirectoryName(exampleConfigPath);
+            if (!Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            var defaultConfig = new
+            {
+                Category = new { Host = "http://host:port", ApiKey = "api_key" },
+                OtherCategory = new { Host = "http://other_host:port", ApiKey = "other_api_key" }
+            };
+            var json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(exampleConfigPath, json, cancellationToken);
+        }
 
         Ready = true;
     }

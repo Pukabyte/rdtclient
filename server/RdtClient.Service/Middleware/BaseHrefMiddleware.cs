@@ -1,20 +1,19 @@
 ﻿using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
+using RdtClient.Data.Models.Internal;
 
 namespace RdtClient.Service.Middleware;
 
 public class BaseHrefMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly String _basePath;
 
-    public BaseHrefMiddleware(RequestDelegate next, String basePath)
+    public BaseHrefMiddleware(RequestDelegate next)
     {
         _next = next;
-        _basePath = $"/{basePath.TrimStart('/').TrimEnd('/')}/";
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, AppSettings appSettings)
     {
         var originalBody = context.Response.Body;
 
@@ -33,10 +32,12 @@ public class BaseHrefMiddleware
             // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
             if (context.Response.ContentType?.Contains("text/html") == true)
             {
-                responseBody = Regex.Replace(responseBody, @"<base href=""/""", @$"<base href=""{_basePath}""");
+                var basePath = $"/{appSettings.BasePath!.TrimStart('/').TrimEnd('/')}/";
                 
-                responseBody = Regex.Replace(responseBody, "(<script.*?src=\")(.*?)(\".*?</script>)", $"$1{_basePath}$2$3");
-                responseBody = Regex.Replace(responseBody, "(<link.*?href=\")(.*?)(\".*?>)", $"$1{_basePath}$2$3");
+                responseBody = Regex.Replace(responseBody, @"<base href=""/""", @$"<base href=""{basePath}""");
+                
+                responseBody = Regex.Replace(responseBody, "(<script.*?src=\")(.*?)(\".*?</script>)", $"$1{basePath}$2$3");
+                responseBody = Regex.Replace(responseBody, "(<link.*?href=\")(.*?)(\".*?>)", $"$1{basePath}$2$3");
 
                 context.Response.Headers.Remove("Content-Length");
                 await context.Response.WriteAsync(responseBody);

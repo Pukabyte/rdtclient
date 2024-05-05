@@ -1,4 +1,4 @@
-using RdtClient.Data.Data;
+﻿using RdtClient.Data.Data;
 using Download = RdtClient.Data.Models.Data.Download;
 
 namespace RdtClient.Service.Services;

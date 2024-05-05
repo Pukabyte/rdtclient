@@ -1,4 +1,4 @@
-using RdtClient.Data.Models.Data;
+﻿using RdtClient.Data.Models.Data;
 using RdtClient.Service.Helpers;
 using RdtClient.Service.Services.Downloaders;
 
@@ -23,14 +23,13 @@ public class DownloadClient
     public Int64 BytesTotal { get; private set; }
     public Int64 BytesDone { get; private set; }
 
-    public DownloadClient(Download download, Torrent torrent, String destinationPath)
+    public DownloadClient(Download download, Torrent torrent, string destinationPath)
     {
         _download = download;
         _torrent = torrent;
         _destinationPath = destinationPath;
 
         Type = Settings.Get.DownloadClient.Client;
-
     }
 
     public async Task<String?> Start()
@@ -47,21 +46,19 @@ public class DownloadClient
             }
 
             var filePath = DownloadHelper.GetDownloadPath(_destinationPath, _torrent, _download);
-            var downloadPath = DownloadHelper.GetDownloadPath(_torrent, _download);
 
-            if (filePath == null || downloadPath == null)
+            if (filePath == null)
             {
                 throw new Exception("Invalid download path");
             }
 
             await FileHelper.Delete(filePath);
 
-
             Downloader = Type switch
             {
                 Data.Enums.DownloadClient.Internal => new InternalDownloader(_download.Link, filePath),
-                Data.Enums.DownloadClient.Aria2c => new Aria2cDownloader(_download.RemoteId, _download.Link, filePath, downloadPath),
-                Data.Enums.DownloadClient.Symlink => new SymlinkDownloader(_download.Link, filePath),
+                Data.Enums.DownloadClient.Aria2c => new Aria2cDownloader(_download.RemoteId, _download.Link, filePath),
+                Data.Enums.DownloadClient.Symlink => new SymlinkDownloader(_download, filePath),
                 _ => throw new Exception($"Unknown download client {Settings.Get.DownloadClient}")
             };
 

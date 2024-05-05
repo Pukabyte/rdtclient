@@ -73,7 +73,6 @@ public static class FileHelper
             }
         }
     }
-
     public static String RemoveInvalidFileNameChars(String filename)
     {
         return String.Concat(filename.Split(Path.GetInvalidFileNameChars()));

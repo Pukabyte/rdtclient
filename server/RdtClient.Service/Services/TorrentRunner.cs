@@ -1,5 +1,7 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Numerics;
+using System.Text;
 using System.Text.Json;
 using System.Web;
 using Aria2NET;
@@ -538,6 +540,114 @@ public class TorrentRunner
                         {
                             await _torrents.CreateDownloads(torrent.TorrentId);
                         }
+
+                        if (!String.IsNullOrWhiteSpace(Settings.Get.General.RcloneRefreshCommand))
+                        {
+                            RefreshRclone();
+                        }
+
+                        if (Settings.Get.General.SkipLinkUnrestricting)
+                        {
+                            List<string> filePaths = new List<string>();
+
+                            foreach (var fileSelected in torrent.Files)
+                            {
+                                _logger.LogInformation($"Torrent file: {fileSelected.Path}");
+
+                                string fileName = Path.GetFileName(fileSelected.Path);
+                                string fileExtension = Path.GetExtension(fileName);
+
+                                string realFilePath = "";
+                                string symlinkPath = "";
+
+                                long minFileSizeInBytes = torrent.DownloadMinSize * 1024 * 1024;
+
+                                try
+                                {
+                                    if (fileSelected.Bytes >= minFileSizeInBytes)
+                                    {
+                                        _logger.LogDebug($"torrent.RdName value = {torrent.RdName}");
+
+                                        symlinkPath = Path.Combine(Settings.Get.DownloadClient.DownloadPath, torrent.Category, torrent.RdName, fileName);
+
+                                        bool realFileFound = false;
+                                        bool extensionAdded = false;
+
+                                        int maxAttempts = 3;
+                                        int attempts = 0;
+
+                                        while (!realFileFound && attempts < maxAttempts)
+                                        {
+                                            attempts++;
+                                            realFilePath = Path.Combine(Settings.Get.DownloadClient.RcloneMountPath, torrent.RdName, fileName);
+
+                                            if (!File.Exists(realFilePath))
+                                            {
+                                                if (!extensionAdded)
+                                                {
+                                                    if (!File.Exists(realFilePath))
+                                                    {
+                                                        _logger.LogDebug($"Real file path not found without extension, adding extension and retrying.");
+                                                        torrent.RdName += fileExtension;
+                                                        extensionAdded = true;
+                                                        continue;
+                                                    }
+                                                }
+
+                                                if (!File.Exists(realFilePath))
+                                                {
+                                                    _logger.LogDebug($"Real file path not found with extension, retrying without extension.");
+                                                    torrent.RdName = Path.GetFileNameWithoutExtension(torrent.RdName);
+                                                    extensionAdded = false;
+                                                    await Task.Delay(1000);
+                                                    continue;
+                                                }
+                                                else
+                                                {
+                                                    realFileFound = true;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                realFileFound = true;
+
+                                                _logger.LogDebug($"Paths for file: {fileSelected.Path} Real path: {realFilePath} Symlink path: {symlinkPath}");
+
+                                                if (await TryCreateSymbolicLink(realFilePath, symlinkPath))
+                                                {
+                                                    filePaths.Add(symlinkPath);
+                                                }
+                                            }
+                                        }
+
+                                        if (!realFileFound)
+                                        {
+                                            _logger.LogError($"File {fileSelected.Path} not found after {maxAttempts} attempts.");
+                                            await _torrents.UpdateComplete(torrent.TorrentId, $"File {fileSelected.Path} not found after {maxAttempts} attempts.", DateTimeOffset.UtcNow, true);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        _logger.LogInformation($"File {fileSelected.Path} is smaller than the minimum allowed size.");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    string errorMessage = $"Error constructing paths for file {fileSelected.Path}. ";
+                                    if (!string.IsNullOrEmpty(realFilePath))
+                                    {
+                                        errorMessage += $"Real path: {realFilePath}, ";
+                                    }
+                                    if (!string.IsNullOrEmpty(symlinkPath))
+                                    {
+                                        errorMessage += $"Symlink path: {symlinkPath}. ";
+                                    }
+                                    errorMessage += $"Error: {ex.Message}";
+
+                                    _logger.LogError(errorMessage);
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -562,6 +672,75 @@ public class TorrentRunner
                         Log($"All downloads complete, marking torrent as complete", torrent);
 
                         await _torrents.UpdateComplete(torrent.TorrentId, null, DateTimeOffset.UtcNow, true);
+
+                        if (!String.IsNullOrWhiteSpace(Settings.Get.General.RadarrSonarrInstanceConfigPath))
+                        {
+                            await TryRefreshMonitoredDownloadsAsync(torrent.Category, Settings.Get.General.RadarrSonarrInstanceConfigPath);
+                        }
+
+                        if (!String.IsNullOrWhiteSpace(Settings.Get.General.CopyAddedTorrents))
+                        {
+                            List<string> filePaths = new List<string>();
+                            bool allFilesExist = true;
+
+                            foreach (var fileSelected in torrent.Files)
+                            {
+                                _logger.LogInformation($"Torrent file: {fileSelected.Path}");
+                                filePaths.Add(fileSelected.Path);
+                            }
+
+                            foreach (var filePath in filePaths)
+                            {
+                                var expectedFilePath = Path.Combine(Settings.Get.General.CopyAddedTorrents, filePath);
+
+                                if (File.Exists(expectedFilePath))
+                                {
+                                    _logger.LogInformation($"File exists: {expectedFilePath}");
+                                }
+                                else
+                                {
+                                    _logger.LogWarning($"File NOT found: {expectedFilePath}");
+                                    allFilesExist = false;
+                                }
+                            }
+
+                            if (allFilesExist)
+                            {
+                                var sourceFilePath = Path.Combine(Settings.Get.DownloadClient.MappedPath, "TorrentBlackhole", "tempTorrentsFiles", $"{torrent.RdName}.torrent");
+
+                                if (File.Exists(sourceFilePath))
+                                {
+                                    if (Settings.Get.General.KeepCopyAddedTorrents)
+                                    {
+                                        var categoryTargetFilePath = Path.Combine(Settings.Get.DownloadClient.MappedPath, "TorrentBlackhole", torrent.Category, $"{torrent.RdName}.torrent");
+
+                                        var categoryTargetDir = Path.GetDirectoryName(categoryTargetFilePath);
+                                        if (!Directory.Exists(categoryTargetDir))
+                                        {
+                                            Directory.CreateDirectory(categoryTargetDir);
+                                        }
+
+                                        File.Copy(sourceFilePath, categoryTargetFilePath, true);
+                                        _logger.LogInformation($"Copied {torrent.RdName}.torrent to the Blackhole/{torrent.Category} directory.");
+                                    }
+
+                                    var targetFilePath = Path.Combine(Settings.Get.General.CopyAddedTorrents, $"{torrent.RdName}.torrent");
+
+                                    if (File.Exists(targetFilePath))
+                                    {
+                                        File.Delete(targetFilePath);
+                                    }
+
+                                    File.Move(sourceFilePath, targetFilePath);
+                                    _logger.LogInformation($"Moved {torrent.RdName}.torrent from tempTorrentsFiles to the seed client import directory.");
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Not all files were found, skipping subsequent actions.");
+                            }
+                        }
+
 
                         switch (torrent.FinishedAction)
                         {
@@ -589,7 +768,6 @@ public class TorrentRunner
 
                                 break;
                         }
-
                         try
                         {
                             await _torrents.RunTorrentComplete(torrent.TorrentId);
@@ -621,6 +799,106 @@ public class TorrentRunner
             Log($"TorrentRunner Tick End (took {sw.ElapsedMilliseconds}ms)");
         }
     }
+
+    private void RefreshRclone()
+    {
+        var processInfo = new ProcessStartInfo
+        {
+            FileName = "/usr/bin/rclone",
+            Arguments = Settings.Get.General.RcloneRefreshCommand,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false
+        };
+
+        using (var process = Process.Start(processInfo))
+        {
+            if (process != null)
+            {
+                process.WaitForExit();
+                var output = process.StandardOutput.ReadToEnd();
+                var error = process.StandardError.ReadToEnd();
+                _logger.LogDebug($"rclone refresh output: {output}");
+                _logger.LogDebug($"rclone refresh error: {error}");
+            }
+        }
+    }
+
+    private async Task<bool> TryCreateSymbolicLink(string sourcePath, string symlinkPath)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(symlinkPath));
+
+            File.CreateSymbolicLink(symlinkPath, sourcePath);
+
+            if (File.Exists(symlinkPath))
+            {
+                _logger.LogInformation($"Created symbolic link from {sourcePath} to {symlinkPath}");
+                return true;
+            }
+            else
+            {
+                _logger.LogError($"Failed to create symbolic link from {sourcePath} to {symlinkPath}");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error creating symbolic link from {sourcePath} to {symlinkPath}: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<bool> TryRefreshMonitoredDownloadsAsync(string categoryInstance, string configFilePath)
+{
+    try
+    {
+        var jsonString = await File.ReadAllTextAsync(configFilePath);
+        using (JsonDocument doc = JsonDocument.Parse(jsonString))
+        {
+            if (doc.RootElement.TryGetProperty(categoryInstance, out var category))
+            {
+                var host = category.GetProperty("Host").GetString();
+                var apiKey = category.GetProperty("ApiKey").GetString();
+
+                if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(apiKey))
+                {
+                    _logger.LogError("Host ou ApiKey est vide.");
+                    return false;
+                }
+
+                var data = new StringContent("{\"name\":\"RefreshMonitoredDownloads\"}", Encoding.UTF8, "application/json");
+                _httpClient.DefaultRequestHeaders.Clear();
+                _httpClient.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+                var response = await _httpClient.PostAsync($"{host}/api/v3/command", data);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation($"Réponse de l'API : {responseBody}");
+                    return true;
+                }
+                else
+                {
+                    _logger.LogError("La requête API a échoué.");
+                    return false;
+                }
+            }
+            else
+            {
+                _logger.LogError($"La catégorie {categoryInstance} n'est pas trouvée dans le fichier de configuration.");
+                return false;
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError($"Une erreur est survenue lors de la lecture du fichier de configuration ou de l'appel API: {ex.Message}");
+        return false;
+    }
+}
+
 
     private void Log(String message, Download? download, Torrent? torrent)
     {

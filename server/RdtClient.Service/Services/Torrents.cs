@@ -76,8 +76,8 @@ public class Torrents
 
                 if (TorrentRunner.ActiveUnpackClients.TryGetValue(download.DownloadId, out var unpackClient))
                 {
-                    download.BytesTotal = 100;
-                    download.BytesDone = unpackClient.Progess;
+                    download.BytesTotal = unpackClient.BytesTotal;
+                    download.BytesDone = unpackClient.BytesDone;
                 }
             }
         }
@@ -142,7 +142,13 @@ public class Torrents
                     Directory.CreateDirectory(Settings.Get.General.CopyAddedTorrents);
                 }
 
-                var copyFileName = Path.Combine(Settings.Get.General.CopyAddedTorrents, $"{FileHelper.RemoveInvalidFileNameChars(magnet.Name)}.magnet");
+                var processingPath = Path.Combine(Settings.Get.DownloadClient.MappedPath, "TorrentBlackhole", "tempTorrentsFiles");
+                if (!Directory.Exists(processingPath))
+                {
+                    Directory.CreateDirectory(processingPath);
+                }
+                var copyFileName = Path.Combine(processingPath, $"{FileHelper.RemoveInvalidFileNameChars(magnet.Name)}.magnet");
+
 
                 if (File.Exists(copyFileName))
                 {
@@ -153,8 +159,14 @@ public class Torrents
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Unable to create torrent blackhole directory: {Settings.Get.General.CopyAddedTorrents}: {ex.Message}");
+                _logger.LogError(ex, $"Unable to create torrent blackhole directory: {Settings.Get.DownloadClient.MappedPath + "TorrentBlackhole/tempTorrentsFiles"}: {ex.Message}");
             }
+        }
+
+        if (!String.IsNullOrWhiteSpace(Settings.Get.Provider.AddToAllDebridToo))
+        {
+            var allDebridId = await _allDebridTorrentClient.AddMagnet(magnetLink);
+            Log($"Magnet link also added to AllDebrid with ID {allDebridId}", torrent);
         }
 
         return newTorrent;
@@ -165,7 +177,6 @@ public class Torrents
         MonoTorrent.Torrent monoTorrent;
 
         var fileAsBase64 = Convert.ToBase64String(bytes);
-        _logger.LogDebug($"bytes {bytes}");
 
         try
         {
@@ -182,7 +193,7 @@ public class Torrents
 
         var newTorrent = await Add(id, hash, fileAsBase64, true, torrent);
 
-        Log($"Adding {hash} torrent file", newTorrent);
+        Log($"Adding {hash} torrent file {fileAsBase64}", newTorrent);
 
         if (!String.IsNullOrWhiteSpace(Settings.Get.General.CopyAddedTorrents))
         {
@@ -193,7 +204,13 @@ public class Torrents
                     Directory.CreateDirectory(Settings.Get.General.CopyAddedTorrents);
                 }
 
-                var copyFileName = Path.Combine(Settings.Get.General.CopyAddedTorrents, $"{FileHelper.RemoveInvalidFileNameChars(monoTorrent.Name)}.torrent");
+                var processingPath = Path.Combine(Settings.Get.DownloadClient.MappedPath, "TorrentBlackhole", "tempTorrentsFiles");
+                if (!Directory.Exists(processingPath))
+                {
+                    Directory.CreateDirectory(processingPath);
+                }
+                var copyFileName = Path.Combine(processingPath, $"{FileHelper.RemoveInvalidFileNameChars(monoTorrent.Name)}.torrent");
+
 
                 if (File.Exists(copyFileName))
                 {
@@ -204,8 +221,14 @@ public class Torrents
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Unable to create torrent blackhole directory: {Settings.Get.General.CopyAddedTorrents}: {ex.Message}");
+                _logger.LogError(ex, $"Unable to create torrent blackhole directory: {Settings.Get.DownloadClient.MappedPath + "TorrentBlackhole/tempTorrentsFiles"}: {ex.Message}");
             }
+        }
+
+        if (!String.IsNullOrWhiteSpace(Settings.Get.Provider.AddToAllDebridToo))
+        {
+            var allDebridId = await _allDebridTorrentClient.AddFile(bytes);
+            Log($"File also added to AllDebrid with ID {allDebridId}", torrent);
         }
 
         return newTorrent;
@@ -421,7 +444,6 @@ public class Torrents
                     var newTorrent = new Torrent
                     {
                         Category = Settings.Get.Provider.Default.Category,
-                        DownloadClient = Settings.Get.DownloadClient.Client,
                         DownloadAction = Settings.Get.Provider.Default.OnlyDownloadAvailableFiles ? TorrentDownloadAction.DownloadAvailableFiles : TorrentDownloadAction.DownloadAll,
                         FinishedAction = Settings.Get.Provider.Default.FinishedAction,
                         DownloadMinSize = Settings.Get.Provider.Default.MinFileSize,
@@ -438,7 +460,7 @@ public class Torrents
                         continue;
                     }
 
-                    torrent = await _torrentData.Add(rdTorrent.Id, rdTorrent.Hash, null, false, Settings.Get.DownloadClient.Client, newTorrent);
+                    torrent = await _torrentData.Add(rdTorrent.Id, rdTorrent.Hash, null, false, newTorrent);
 
                     await UpdateTorrentClientData(torrent, rdTorrent);
                 }
@@ -630,8 +652,8 @@ public class Torrents
 
             if (TorrentRunner.ActiveUnpackClients.TryGetValue(download.DownloadId, out var unpackClient))
             {
-                download.BytesTotal = 100;
-                download.BytesDone = unpackClient.Progess;
+                download.BytesTotal = unpackClient.BytesTotal;
+                download.BytesDone = unpackClient.BytesDone;
             }
         }
 
@@ -671,7 +693,6 @@ public class Torrents
                                                     infoHash,
                                                     fileOrMagnetContents,
                                                     isFile,
-                                                    Settings.Get.DownloadClient.Client,
                                                     torrent);
 
             await UpdateTorrentClientData(newTorrent);
@@ -713,18 +734,9 @@ public class Torrents
         var downloadPath = DownloadPath(torrent);
         var torrentPath = Path.Combine(downloadPath, torrent.RdName ?? "Unknown");
 
-        var filePath = torrentPath;
-
-        var files = Directory.GetFiles(filePath);
-
-        if (files.Length == 1)
-        {
-            filePath = Path.Combine(torrentPath, files[0]);
-        }
-
         arguments = arguments.Replace("%N", $"\"{torrent.RdName}\"");
         arguments = arguments.Replace("%L", $"\"{torrent.Category}\"");
-        arguments = arguments.Replace("%F", $"\"{filePath}\"");
+        arguments = arguments.Replace("%F", $"\"{torrentPath}\"");
         arguments = arguments.Replace("%R", $"\"{downloadPath}\"");
         arguments = arguments.Replace("%D", $"\"{torrentPath}\"");
         arguments = arguments.Replace("%C", downloads.Count.ToString(CultureInfo.InvariantCulture).Replace(",", "").Replace(".", ""));

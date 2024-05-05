@@ -15,25 +15,15 @@ public class Aria2cDownloader : IDownloader
     private readonly ILogger _logger;
     private readonly String _uri;
     private readonly String _filePath;
-    private readonly String _remotePath;
 
     private String? _gid;
 
-    public Aria2cDownloader(String? gid, String uri, String filePath, String downloadPath)
+    public Aria2cDownloader(String? gid, String uri, String filePath)
     {
         _logger = Log.ForContext<Aria2cDownloader>();
         _gid = gid;
         _uri = uri;
         _filePath = filePath;
-
-        if (!String.IsNullOrWhiteSpace(Settings.Get.DownloadClient.Aria2cDownloadPath))
-        {
-            _remotePath = Path.Combine(Settings.Get.DownloadClient.Aria2cDownloadPath, downloadPath).Replace('\\', '/');
-        }
-        else
-        {
-            _remotePath = _filePath;
-        }
 
         var httpClient = new HttpClient
         {
@@ -45,7 +35,7 @@ public class Aria2cDownloader : IDownloader
         
     public async Task<String?> Download()
     {
-        var path = Path.GetDirectoryName(_remotePath);
+        var path = Path.GetDirectoryName(_filePath);
 
         if (path == null)
         {
@@ -54,7 +44,7 @@ public class Aria2cDownloader : IDownloader
 
         var fileName = Path.GetFileName(_filePath);
 
-        _logger.Debug($"Starting download of {_uri}, writing to path: {_filePath} (on aria2: {_remotePath}), fileName: {fileName}");
+        _logger.Debug($"Starting download of {_uri}, writing to path: {path}, fileName: {fileName}");
 
         if (String.IsNullOrWhiteSpace(_gid))
         {
@@ -92,7 +82,7 @@ public class Aria2cDownloader : IDownloader
                                                            new Dictionary<String, Object>
                                                            {
                                                                {
-                                                                   "dir", path.Replace('\\', '/')
+                                                                   "dir", path
                                                                },
                                                                {
                                                                    "out", fileName
@@ -207,7 +197,7 @@ public class Aria2cDownloader : IDownloader
                 {
                     DownloadComplete?.Invoke(this, new DownloadCompleteEventArgs
                     {
-                        Error = $"File not found at {_filePath} (on aria2 {_remotePath})"
+                        Error = $"File not found at {_filePath}"
                     });
                     break;
                 }
