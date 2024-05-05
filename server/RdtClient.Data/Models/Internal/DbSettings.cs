@@ -47,7 +47,7 @@ public class DbSettingsGeneral
     public Int32 UnpackLimit { get; set; } = 1;
 
     [DisplayName("Categories")]
-    [Description("Expose these categories through the QBittorrent API. Define multiple categories by separating them with a comma.")]
+    [Description("Expose these categories through the QBittorrent API.")]
     public String? Categories { get; set; } = null;
 
     [DisplayName("Run external program on torrent completion")]
@@ -71,9 +71,25 @@ Supports the following parameters:
     [Description("How to authenticate with the client. WARNING: when set to None anyone with access to the URL can use the client without any credentials.")]
     public AuthenticationType AuthenticationType { get; set; } = AuthenticationType.UserNamePassword;
 
-    [DisplayName("Copy added torrent files")]
-    [Description("When a torrent file or magnet is added, create a copy in this directory.")]
+    [DisplayName("Seed added torrent files")]
+    [Description("[Only with Symlink Downloader] When a torrent file or magnet is added, create a copy in this directory so that it can be imported by a seed client, symlinks will be present allowing the seed without downloading again.")]
     public String? CopyAddedTorrents { get; set; } = null;
+
+    [DisplayName("Keep a copy of .torrent files sent to seed client")]
+    [Description("[Only with Symlink Downloader] When a torrent file is added, keep a copy in RDT_Download_Client_Mapped_Path/TorrentBlackhole/ImportCategory directory.")]
+    public Boolean KeepCopyAddedTorrents { get; set; } = false;
+
+    [DisplayName("Notify Arrs of RDT download completion")]
+    [Description("Set the destination path for the Radarr and Sonarr instance JSON configuration file (template available at /data/db/instances.json). This addition speeds up the final import by notifying Radarr / Sonarr of a download's completion by RDT, rather than waiting for them to check on their own.")]
+    public String? RadarrSonarrInstanceConfigPath { get; set; } = null;
+
+    [DisplayName("Trigger Rclone refresh for speed up file discovery")]
+    [Description("Allows users to define a customizable command, such as \"rc vfs/refresh recursive=true --rc-addr=172.17.0.1:5572\", to trigger an Rclone refresh operation before initiating the file discovery process. This feature aims to expedite the discovery by performing an immediate refresh, instead of relying on Rclone's periodic automatic refresh.")]
+    public String? RcloneRefreshCommand { get; set; } = null;
+
+    [DisplayName("Skip link unrestricting")]
+    [Description("Enable to bypass the link unrestricting, allowing direct symlink creation as soon as files are uploaded. You need to set 'Post Torrent Download Action' to \"Don't download any files to host\".")]
+    public Boolean SkipLinkUnrestricting { get; set; } = false;
 }
 
 public class DbSettingsDownloadClient
@@ -97,11 +113,7 @@ public class DbSettingsDownloadClient
 
     [DisplayName("Parallel connections per download (only used for the Internal Downloader)")]
     [Description("Maximum amount of parallel threads that are used to download a single file to your host. If set to 0 no parallel downloading will be done.")]
-    public Int32 ParallelCount { get; set; } = 4;
-
-    [DisplayName("Chunk Count")]
-    [Description("Split the downloaded file in this amount of chunks.")]
-    public Int32 ChunkCount { get; set; } = 8;
+    public Int32 ParallelCount { get; set; } = 0;
 
     [DisplayName("Connection Timeout (only used for the Internal Downloader)")]
     [Description("Timeout in milliseconds before the downloader times out.")]
@@ -119,10 +131,6 @@ http://127.0.0.1:6800/jsonrpc.")]
     [DisplayName("Aria2c Secret (only used for the Aria2c Downloader)")]
     [Description("The secret of your Aria2c instance. Optional.")]
     public String Aria2cSecret { get; set; } = "mysecret123";
-    
-    [DisplayName("Aria2c Download Path")]
-    [Description("The root path to download the file to on the Aria2c host, if empty use the Download path setting.")]
-    public String? Aria2cDownloadPath { get; set; } = null;
 
     [DisplayName("Rclone mount path (only used for the Symlink Downloader)")]
     [Description("Path where Rclone is mounted. Required for Symlink Downloader.")]
@@ -149,11 +157,11 @@ or
     public String ApiKey { get; set; } = "";
 
     [DisplayName("Automatically import and process torrents added to provider")]
-    [Description("When selected, import downloads that are not added through RealDebridClient but have been directly added to your debrid provider.")]
+    [Description("When selected, import downloads that are not added through RealDebridClient but have been directly added to Real-Debrid, AllDebrid or Premiumize.")]
     public Boolean AutoImport { get; set; } = false;
 
     [DisplayName("Automatically delete downloads removed from provider")]
-    [Description("When selected, cancel and delete downloads that have been removed from your debrid provider.")]
+    [Description("When selected, cancel and delete downloads that have been removed from Real-Debrid, AllDebrid or Premiumize.")]
     public Boolean AutoDelete { get; set; } = false;
 
     [DisplayName("Connection Timeout")]
@@ -164,18 +172,22 @@ or
     [Description("The interval to check the torrents info on the providers API. Minumum is 3 seconds. When there are no active downloads this limit is increased * 3.")]
     public Int32 CheckInterval { get; set; } = 10;
 
+    [DisplayName("All-Debrid API Key")]
+    [Description("Sends content to All-Debrid in addition to the main provider already configured")]
+    public String? AddToAllDebridToo { get; set; } = null;
+
     [DisplayName("Auto Import Defaults")]
     public DbSettingsDefaultsWithCategory Default { get; set; } = new();
 }
 
 public class DbSettingsIntegrations
 {
-    public DbSettingsDefaultsWithCategory Default { get; set; } = new();
+    public DbSettingsDefaultsWithDownload Default { get; set; } = new();
 }
 
 public class DbSettingsGui
 {
-    public DbSettingsDefaultsWithCategory Default { get; set; } = new();
+    public DbSettingsDefaultsWithDownload Default { get; set; } = new();
 }
 
 public class DbSettingsWatch
@@ -197,21 +209,24 @@ public class DbSettingsWatch
     public Int32 Interval { get; set; } = 60;
 
     [DisplayName("Import Defaults")]
-    public DbSettingsDefaultsWithCategory Default { get; set; } = new();
+    public DbSettingsDefaultsWithDownload Default { get; set; } = new();
+}
+
+public class DbSettingsDefaultsWithDownload : DbSettingsDefaultsWithCategory
+{
+    [DisplayName("Post Torrent Download Action")]
+    [Description("When a torrent is finished downloading on the provider, perform this action. Use this setting if you only want to add files to Real-Debrid but not download them to the host.")]
+    public TorrentHostDownloadAction HostDownloadAction { get; set; }
 }
 
 public class DbSettingsDefaultsWithCategory : DbSettingsDefaults
 {
-    [DisplayName("Post Torrent Download Action")]
-    [Description("When a torrent is finished downloading on your debrid provider, perform this action. Use this setting if you only want to add files to your debrid provider but not download them to the host.")]
-    public TorrentHostDownloadAction HostDownloadAction { get; set; }
-
     [DisplayName("Category")]
     [Description("When a torrent is imported assign it this category.")]
     public String? Category { get; set; } = null;
 
     [DisplayName("Post Download Action")]
-    [Description("When all files are downloaded from the provider to the host, perform this action. Does not apply when using the symlink downloader.")]
+    [Description("When all files are downloaded from the provider to the host, perform this action.")]
     public TorrentFinishedAction FinishedAction { get; set; } = TorrentFinishedAction.RemoveAllTorrents;
 }
 

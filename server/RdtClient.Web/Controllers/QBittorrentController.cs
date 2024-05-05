@@ -237,7 +237,7 @@ public class QBittorrentController : Controller
     }
 
     [Authorize(Policy = "AuthSetting")]
-    [Route("torrents/pause")]
+    [Route("torrents/topPrio")]
     [HttpPost]
     public async Task<ActionResult> TorrentsPausePost([FromForm] QBTorrentsHashesRequest request)
     {
@@ -265,7 +265,7 @@ public class QBittorrentController : Controller
     }
 
     [Authorize(Policy = "AuthSetting")]
-    [Route("torrents/resume")]
+    [Route("torrents/topPrio")]
     [HttpPost]
     public async Task<ActionResult> TorrentsResumePost([FromForm] QBTorrentsHashesRequest request)
     {

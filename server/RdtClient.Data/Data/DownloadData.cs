@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Download = RdtClient.Data.Models.Data.Download;
 
 namespace RdtClient.Data.Data;
