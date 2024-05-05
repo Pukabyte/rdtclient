@@ -36,7 +36,6 @@ export class TorrentComponent implements OnInit {
 
   public isUpdateSettingsModalActive: boolean;
 
-  public updateSettingsDownloadClient: number;
   public updateSettingsHostDownloadAction: number;
   public updateSettingsCategory: string;
   public updateSettingsPriority: number;
@@ -178,7 +177,6 @@ export class TorrentComponent implements OnInit {
   }
 
   public showUpdateSettingsModal(): void {
-    this.updateSettingsDownloadClient = this.torrent.downloadClient;
     this.updateSettingsHostDownloadAction = this.torrent.hostDownloadAction;
     this.updateSettingsCategory = this.torrent.category;
     this.updateSettingsPriority = this.torrent.priority;
@@ -197,7 +195,6 @@ export class TorrentComponent implements OnInit {
   public updateSettingsOk(): void {
     this.updating = true;
 
-    this.torrent.downloadClient = this.updateSettingsDownloadClient;
     this.torrent.hostDownloadAction = this.updateSettingsHostDownloadAction;
     this.torrent.category = this.updateSettingsCategory;
     this.torrent.priority = this.updateSettingsPriority;

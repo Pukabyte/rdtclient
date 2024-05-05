@@ -10,7 +10,7 @@ import { AuthService } from '../auth.service';
 export class SetupComponent {
   public userName: string;
   public password: string;
-  public provider = 0;
+  public provider = 'RealDebrid';
   public token: string;
 
   public error: string;
