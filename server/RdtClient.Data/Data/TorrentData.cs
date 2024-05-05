@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using RdtClient.Data.Enums;
 using RdtClient.Data.Models.Data;
 
 namespace RdtClient.Data.Data;
@@ -76,18 +75,17 @@ public class TorrentData
         return dbTorrent;
     }
 
-    public async Task<Torrent> Add(String rdId,
+    public async Task<Torrent> Add(String realDebridId,
                                    String hash,
                                    String? fileOrMagnetContents,
                                    Boolean isFile,
-                                   DownloadClient downloadClient,
                                    Torrent torrent)
     {
         var newTorrent = new Torrent
         {
             TorrentId = Guid.NewGuid(),
             Added = DateTimeOffset.UtcNow,
-            RdId = rdId,
+            RdId = realDebridId,
             Hash = hash.ToLower(),
             Category = torrent.Category,
             HostDownloadAction = torrent.HostDownloadAction,
@@ -95,7 +93,6 @@ public class TorrentData
             FinishedAction = torrent.FinishedAction,
             DownloadMinSize = torrent.DownloadMinSize,
             DownloadManualFiles = torrent.DownloadManualFiles,
-            DownloadClient = downloadClient,
             FileOrMagnet = fileOrMagnetContents,
             IsFile = isFile,
             Priority = torrent.Priority,
@@ -150,7 +147,6 @@ public class TorrentData
             return;
         }
 
-        dbTorrent.DownloadClient = torrent.DownloadClient;
         dbTorrent.HostDownloadAction = torrent.HostDownloadAction;
         dbTorrent.Category = torrent.Category;
         dbTorrent.Priority = torrent.Priority;
